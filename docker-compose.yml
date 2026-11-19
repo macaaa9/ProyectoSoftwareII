@@ -35,6 +35,36 @@ services:
       - mysql_identidad_data:/var/lib/mysql
     restart: unless-stopped
 
+  mysql-catalog:
+    image: mysql:8.4
+    container_name: papiers-mysql-catalog
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: papiers_catalog
+      MYSQL_USER: catalog
+      MYSQL_PASSWORD: catalog_pw
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_catalog_data:/var/lib/mysql
+    restart: unless-stopped
+
+  mysql-inventory:
+    image: mysql:8.4
+    container_name: papiers-mysql-inventory
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: papiers_inventory
+      MYSQL_USER: inventory
+      MYSQL_PASSWORD: inventory_pw
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql_inventory_data:/var/lib/mysql
+    restart: unless-stopped
+
 volumes:
   rabbitmq_data:
   mysql_identidad_data:
+  mysql_catalog_data:
+  mysql_inventory_data:
