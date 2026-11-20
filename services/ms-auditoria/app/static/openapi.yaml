@@ -1,0 +1,96 @@
+openapi: 3.0.3
+info:
+  title: ms-auditoria · Papiers
+  version: 1.0.0
+  description: |
+    Registro inalterable de las operaciones que afectan el inventario y las órdenes de compra (RF10, RNF18).
+    Los registros **solo** se crean a partir de eventos de RabbitMQ (MovimientoRegistrado, MercanciaRecibida,
+    DevolucionProveedorRegistrada). La API es de solo lectura: PUT, PATCH y DELETE responden 405.
+    Acceso únicamente a través del API Gateway (que valida el JWT).
+servers:
+  - url: /
+paths:
+  /auditoria:
+    get:
+      summary: Consultar el historial de auditoría
+      parameters:
+        - { name: usuario, in: query, schema: { type: integer }, description: ID del usuario responsable }
+        - { name: producto, in: query, schema: { type: integer } }
+        - name: tipo
+          in: query
+          schema: { type: string, example: SALIDA }
+          description: "Tipo de operación. SALIDA, ENTRADA, AJUSTE, TRASLADO, DEVOLUCION_CLIENTE, RECEPCION_MERCANCIA, DEVOLUCION_PROVEEDOR"
+        - { name: servicio, in: query, schema: { type: string, example: ms-inventario } }
+        - { name: referencia, in: query, schema: { type: string, example: OC-15 } }
+        - { name: fecha, in: query, schema: { type: string, format: date }, description: Un día completo (hora de Colombia) }
+        - { name: desde, in: query, schema: { type: string, format: date } }
+        - { name: hasta, in: query, schema: { type: string, format: date }, description: Inclusivo }
+        - { name: pagina, in: query, schema: { type: integer, default: 1, minimum: 1 } }
+        - { name: por_pagina, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+      responses:
+        "200":
+          description: Lista paginada, más reciente primero
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datos: { type: array, items: { $ref: "#/components/schemas/Registro" } }
+                  paginacion: { $ref: "#/components/schemas/Paginacion" }
+        "400": { $ref: "#/components/responses/Error" }
+    put: { summary: No permitido (inmutable), responses: { "405": { $ref: "#/components/responses/Error" } } }
+    delete: { summary: No permitido (inmutable), responses: { "405": { $ref: "#/components/responses/Error" } } }
+  /auditoria/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      summary: Detalle de un registro
+      responses:
+        "200":
+          description: Registro
+          content: { application/json: { schema: { $ref: "#/components/schemas/Registro" } } }
+        "404": { $ref: "#/components/responses/Error" }
+    put: { summary: No permitido (inmutable), responses: { "405": { $ref: "#/components/responses/Error" } } }
+    delete: { summary: No permitido (inmutable), responses: { "405": { $ref: "#/components/responses/Error" } } }
+  /health:
+    get:
+      summary: Readiness (verifica la BD). Usado por Kubernetes y Consul.
+      responses: { "200": { description: OK }, "503": { description: BD no disponible } }
+  /health/live:
+    get:
+      summary: Liveness
+      responses: { "200": { description: OK } }
+components:
+  schemas:
+    Registro:
+      type: object
+      properties:
+        id: { type: integer, example: 1024 }
+        evento_id: { type: string, example: 3f6c1d2e-8b7a-4c1f-9e2d-1a2b3c4d5e6f }
+        usuario_id: { type: integer, nullable: true, example: 7 }
+        fecha_hora: { type: string, format: date-time, example: "2026-11-19T20:15:00Z" }
+        servicio_origen: { type: string, example: ms-inventario }
+        tipo_operacion: { type: string, example: MOVIMIENTO_SALIDA }
+        producto_id: { type: integer, example: 42 }
+        cantidad_anterior: { type: integer, nullable: true, example: 30 }
+        cantidad_modificada: { type: integer, example: 5 }
+        motivo: { type: string, nullable: true, example: Venta mostrador }
+        referencia: { type: string, nullable: true, example: MOV-981 }
+        registrado_en: { type: string, format: date-time }
+    Paginacion:
+      type: object
+      properties:
+        pagina: { type: integer }
+        por_pagina: { type: integer }
+        total: { type: integer }
+        paginas: { type: integer }
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }
+              mensaje: { type: string }

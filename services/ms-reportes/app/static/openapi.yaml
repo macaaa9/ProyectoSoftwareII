@@ -1,0 +1,124 @@
+openapi: 3.0.3
+info:
+  title: ms-reportes · Papiers
+  version: 1.0.0
+  description: |
+    Analítica e indicadores del inventario (RF11, RF14, RF18). Lee de su propia base de lectura (db_reportes),
+    alimentada por los eventos ProductoActualizado, MovimientoRegistrado y EstadoStockCambiado.
+    Nunca consulta la base de otro servicio (RNF02). Acceso solo a través del API Gateway.
+servers:
+  - url: /
+paths:
+  /reportes/existencias:
+    get:
+      summary: Existencias actuales por producto y bodega, con semáforo
+      parameters:
+        - { name: bodega, in: query, schema: { type: integer } }
+        - { name: estado, in: query, schema: { type: string, enum: [disponible, stock_bajo, agotado, verde, amarillo, rojo] } }
+        - { name: producto, in: query, schema: { type: integer } }
+        - { name: q, in: query, schema: { type: string }, description: Busca en nombre o código }
+        - { name: pagina, in: query, schema: { type: integer, default: 1 } }
+        - { name: por_pagina, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+      responses:
+        "200":
+          description: Existencias
+          content:
+            application/json:
+              example:
+                datos:
+                  - { producto_id: 42, codigo: CUA-100, nombre: Cuaderno 100 hojas, bodega_id: 1, cantidad: 25, estado: disponible, precio: 4500.0, valor: 112500.0 }
+                resumen: { registros: 1, unidades_totales: 25 }
+                paginacion: { pagina: 1, por_pagina: 50, total: 1, paginas: 1 }
+        "400": { $ref: "#/components/responses/Error" }
+  /reportes/valorizacion:
+    get:
+      summary: Valor del inventario = cantidad × precio
+      parameters:
+        - { name: agrupar, in: query, schema: { type: string, enum: [producto, bodega], default: producto } }
+        - { name: bodega, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Valorización
+          content:
+            application/json:
+              example:
+                agrupado_por: producto
+                valor_total: 112500.0
+                unidades_totales: 25
+                productos_sin_precio: 0
+                datos: [{ producto_id: 42, codigo: CUA-100, nombre: Cuaderno 100 hojas, precio: 4500.0, unidades: 25, valor: 112500.0 }]
+        "400": { $ref: "#/components/responses/Error" }
+  /reportes/rotacion:
+    get:
+      summary: Productos de mayor y menor rotación (unidades vendidas en el periodo)
+      description: "indice_rotacion = unidades_salida / stock_actual. Por defecto, los últimos 30 días."
+      parameters:
+        - { name: desde, in: query, schema: { type: string, format: date } }
+        - { name: hasta, in: query, schema: { type: string, format: date }, description: Inclusivo }
+        - { name: dias, in: query, schema: { type: integer, default: 30 } }
+        - { name: limite, in: query, schema: { type: integer, default: 10, maximum: 100 } }
+      responses:
+        "200":
+          description: Rotación
+          content:
+            application/json:
+              example:
+                desde: "2026-10-20T00:00:00Z"
+                hasta: "2026-11-19T00:00:00Z"
+                productos_analizados: 120
+                mayor_rotacion: [{ producto_id: 42, codigo: CUA-100, nombre: Cuaderno 100 hojas, unidades_salida: 80, stock_actual: 25, indice_rotacion: 3.2 }]
+                menor_rotacion: [{ producto_id: 77, codigo: PIN-ACR, nombre: Pintura acrílica, unidades_salida: 0, stock_actual: 40, indice_rotacion: 0.0 }]
+        "400": { $ref: "#/components/responses/Error" }
+  /reportes/quiebres:
+    get:
+      summary: Quiebres de stock (registros producto-bodega en estado agotado)
+      parameters:
+        - { name: bodega, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Quiebres
+          content:
+            application/json:
+              example:
+                registros_evaluados: 240
+                en_quiebre: 6
+                porcentaje_quiebre: 2.5
+                productos_sin_stock_en_ninguna_bodega: 2
+                datos: [{ producto_id: 9, codigo: BOR-01, nombre: Borrador blanco, bodega_id: 2, desde: "2026-11-18T14:02:00Z" }]
+  /reportes/dashboard:
+    get:
+      summary: Indicadores del dashboard (valor total, semáforo, quiebres, rotación)
+      parameters:
+        - { name: dias, in: query, schema: { type: integer, default: 30 } }
+      responses:
+        "200":
+          description: Indicadores
+          content:
+            application/json:
+              example:
+                valor_total_inventario: 8450000.0
+                unidades_totales: 3120
+                productos_activos: 120
+                productos_sin_precio: 0
+                semaforo: { disponible: 200, stock_bajo: 34, agotado: 6 }
+                quiebres: { en_quiebre: 6, porcentaje_quiebre: 2.5 }
+                rotacion: { periodo_dias: 30, top_mayor: [], top_menor: [] }
+  /health:
+    get:
+      summary: Readiness (verifica la BD). Usado por Kubernetes y Consul.
+      responses: { "200": { description: OK }, "503": { description: BD no disponible } }
+  /health/live:
+    get:
+      summary: Liveness
+      responses: { "200": { description: OK } }
+components:
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }
+              mensaje: { type: string }
