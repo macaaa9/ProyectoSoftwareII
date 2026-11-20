@@ -1,0 +1,70 @@
+services:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: papiers-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: papiers
+      RABBITMQ_DEFAULT_PASS: papiers123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+
+  consul:
+    image: hashicorp/consul:1.21
+    container_name: papiers-consul
+    ports:
+      - "8500:8500"
+    command: agent -dev -client=0.0.0.0
+    restart: unless-stopped
+
+  mysql-identidad:
+    image: mysql:8.0
+    container_name: papiers-mysql-identidad
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: papiers_identidad
+      MYSQL_USER: papiers
+      MYSQL_PASSWORD: papiers123
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_identidad_data:/var/lib/mysql
+    restart: unless-stopped
+
+  mysql-catalog:
+    image: mysql:8.4
+    container_name: papiers-mysql-catalog
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: papiers_catalog
+      MYSQL_USER: catalog
+      MYSQL_PASSWORD: catalog_pw
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_catalog_data:/var/lib/mysql
+    restart: unless-stopped
+
+  mysql-inventory:
+    image: mysql:8.4
+    container_name: papiers-mysql-inventory
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: papiers_inventory
+      MYSQL_USER: inventory
+      MYSQL_PASSWORD: inventory_pw
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql_inventory_data:/var/lib/mysql
+    restart: unless-stopped
+
+volumes:
+  rabbitmq_data:
+  mysql_identidad_data:
+  mysql_catalog_data:
+  mysql_inventory_data:
