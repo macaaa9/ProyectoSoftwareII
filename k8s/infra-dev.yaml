@@ -1,0 +1,88 @@
+# Infraestructura de DESARROLLO: MySQL, RabbitMQ y Consul en el namespace papiers
+apiVersion: v1
+kind: Secret
+metadata: { name: mysql-root, namespace: papiers }
+type: Opaque
+stringData: { MYSQL_ROOT_PASSWORD: root }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: mysql, namespace: papiers }
+spec:
+  serviceName: mysql
+  replicas: 1
+  selector: { matchLabels: { app: mysql } }
+  template:
+    metadata: { labels: { app: mysql } }
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          envFrom: [ { secretRef: { name: mysql-root } } ]
+          ports: [ { containerPort: 3306 } ]
+          readinessProbe:
+            exec: { command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-proot"] }
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          volumeMounts: [ { name: datos, mountPath: /var/lib/mysql } ]
+  volumeClaimTemplates:
+    - metadata: { name: datos }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 1Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: mysql, namespace: papiers }
+spec:
+  selector: { app: mysql }
+  ports: [ { port: 3306 } ]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: rabbitmq, namespace: papiers }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: rabbitmq } }
+  template:
+    metadata: { labels: { app: rabbitmq } }
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:3.13-management
+          ports: [ { containerPort: 5672 }, { containerPort: 15672 } ]
+          readinessProbe:
+            exec: { command: ["rabbitmq-diagnostics", "-q", "ping"] }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata: { name: rabbitmq, namespace: papiers }
+spec:
+  selector: { app: rabbitmq }
+  ports:
+    - { name: amqp, port: 5672 }
+    - { name: panel, port: 15672 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: consul, namespace: papiers }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: consul } }
+  template:
+    metadata: { labels: { app: consul } }
+    spec:
+      containers:
+        - name: consul
+          image: hashicorp/consul:1.19
+          args: ["agent", "-dev", "-client=0.0.0.0"]
+          ports: [ { containerPort: 8500 } ]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: consul, namespace: papiers }
+spec:
+  selector: { app: consul }
+  ports: [ { port: 8500 } ]
