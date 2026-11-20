@@ -20,7 +20,7 @@ def registrar(cfg, intentos=5):
         "ID": _id_servicio(cfg), "Name": cfg["SERVICE_NAME"],
         "Address": direccion, "Port": puerto, "Tags": ["flask", "papiers"],
         "Check": {"HTTP": f"http://{direccion}:{puerto}/health", "Interval": "10s",
-                  "Timeout": "3s", "DeregisterCriticalServiceAfter": "1m"},
+                  "Timeout": "3s", "DeregisterCriticalServiceAfter": "30m"},
     }
     for intento in range(1, intentos + 1):
         try:

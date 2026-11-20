@@ -45,7 +45,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: papiers/ms-reportes:1.0.0
+          image: papiers/ms-reportes:1.0.1
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8007
@@ -87,7 +87,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: papiers/ms-reportes:1.0.0
+          image: papiers/ms-reportes:1.0.1
           imagePullPolicy: IfNotPresent
           command: ["python", "-m", "app.consumer"]
           envFrom:
