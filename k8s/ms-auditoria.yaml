@@ -1,0 +1,127 @@
+# ms-auditoria · Flask · puerto 8005 · namespace papiers
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ms-auditoria-config
+  namespace: papiers
+data:
+  SERVICE_NAME: ms-auditoria
+  SERVICE_PORT: "8005"
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_NAME: db_auditoria
+  RABBITMQ_EXCHANGE: papiers.eventos
+  RABBITMQ_QUEUE: ms-auditoria.eventos
+  RABBITMQ_ROUTING_KEYS: inventario.movimiento.registrado,compras.mercancia.recibida,compras.devolucion.registrada
+  CONSUL_URL: http://consul:8500
+  APP_TZ: America/Bogota
+  LOG_LEVEL: INFO
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ms-auditoria-secret
+  namespace: papiers
+type: Opaque
+stringData:
+  DB_USER: auditoria
+  DB_PASSWORD: auditoria_pass
+  RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
+---
+# API HTTP: 2 réplicas
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-auditoria
+  namespace: papiers
+  labels: { app: ms-auditoria, componente: api }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: ms-auditoria, componente: api }
+  template:
+    metadata:
+      labels: { app: ms-auditoria, componente: api }
+    spec:
+      containers:
+        - name: api
+          image: papiers/ms-auditoria:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8005
+          envFrom:
+            - configMapRef: { name: ms-auditoria-config }
+            - secretRef: { name: ms-auditoria-secret }
+          env:
+            - name: CONSUL_REGISTER
+              value: "true"
+            - name: POD_IP
+              valueFrom:
+                fieldRef: { fieldPath: status.podIP }
+          readinessProbe:
+            httpGet: { path: /health, port: 8005 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health/live, port: 8005 }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+# Consumidor de eventos: misma imagen, otro comando
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-auditoria-worker
+  namespace: papiers
+  labels: { app: ms-auditoria, componente: worker }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: ms-auditoria, componente: worker }
+  template:
+    metadata:
+      labels: { app: ms-auditoria, componente: worker }
+    spec:
+      containers:
+        - name: worker
+          image: papiers/ms-auditoria:1.0.0
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "app.consumer"]
+          envFrom:
+            - configMapRef: { name: ms-auditoria-config }
+            - secretRef: { name: ms-auditoria-secret }
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { cpu: 300m, memory: 192Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-auditoria
+  namespace: papiers
+spec:
+  type: ClusterIP
+  selector: { app: ms-auditoria, componente: api }
+  ports:
+    - port: 8005
+      targetPort: 8005
+---
+# Solo el API Gateway y Consul pueden llamar a la API
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ms-auditoria-solo-gateway
+  namespace: papiers
+spec:
+  podSelector:
+    matchLabels: { app: ms-auditoria, componente: api }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: api-gateway } }
+        - podSelector: { matchLabels: { app: consul } }
+      ports:
+        - port: 8005
