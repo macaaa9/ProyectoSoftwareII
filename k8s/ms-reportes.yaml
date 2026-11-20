@@ -1,0 +1,127 @@
+# ms-reportes · Flask · puerto 8007 · namespace papiers
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ms-reportes-config
+  namespace: papiers
+data:
+  SERVICE_NAME: ms-reportes
+  SERVICE_PORT: "8007"
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_NAME: db_reportes
+  RABBITMQ_EXCHANGE: papiers.eventos
+  RABBITMQ_QUEUE: ms-reportes.eventos
+  RABBITMQ_ROUTING_KEYS: catalogo.producto.actualizado,inventario.movimiento.registrado,inventario.estado_stock.cambiado
+  CONSUL_URL: http://consul:8500
+  APP_TZ: America/Bogota
+  LOG_LEVEL: INFO
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ms-reportes-secret
+  namespace: papiers
+type: Opaque
+stringData:
+  DB_USER: reportes
+  DB_PASSWORD: reportes_pass
+  RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
+---
+# API HTTP: 2 réplicas
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-reportes
+  namespace: papiers
+  labels: { app: ms-reportes, componente: api }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: ms-reportes, componente: api }
+  template:
+    metadata:
+      labels: { app: ms-reportes, componente: api }
+    spec:
+      containers:
+        - name: api
+          image: papiers/ms-reportes:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8007
+          envFrom:
+            - configMapRef: { name: ms-reportes-config }
+            - secretRef: { name: ms-reportes-secret }
+          env:
+            - name: CONSUL_REGISTER
+              value: "true"
+            - name: POD_IP
+              valueFrom:
+                fieldRef: { fieldPath: status.podIP }
+          readinessProbe:
+            httpGet: { path: /health, port: 8007 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health/live, port: 8007 }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+# Consumidor de eventos: misma imagen, otro comando
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-reportes-worker
+  namespace: papiers
+  labels: { app: ms-reportes, componente: worker }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: ms-reportes, componente: worker }
+  template:
+    metadata:
+      labels: { app: ms-reportes, componente: worker }
+    spec:
+      containers:
+        - name: worker
+          image: papiers/ms-reportes:1.0.0
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "app.consumer"]
+          envFrom:
+            - configMapRef: { name: ms-reportes-config }
+            - secretRef: { name: ms-reportes-secret }
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { cpu: 300m, memory: 192Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-reportes
+  namespace: papiers
+spec:
+  type: ClusterIP
+  selector: { app: ms-reportes, componente: api }
+  ports:
+    - port: 8007
+      targetPort: 8007
+---
+# Solo el API Gateway y Consul pueden llamar a la API
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ms-reportes-solo-gateway
+  namespace: papiers
+spec:
+  podSelector:
+    matchLabels: { app: ms-reportes, componente: api }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: api-gateway } }
+        - podSelector: { matchLabels: { app: consul } }
+      ports:
+        - port: 8007
