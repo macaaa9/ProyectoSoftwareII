@@ -4,145 +4,94 @@
 
 @section('content')
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="fw-bold">Dashboard</h2>
-        <p class="text-secondary">Bienvenido al sistema de gestión de Papiers.</p>
-    </div>
+<div class="container-fluid">
 
-    <button class="btn btn-primary">
-        + Nuevo producto
-    </button>
-</div>
+    <h2 class="mb-2">Dashboard</h2>
 
-<div class="row g-4 mb-4">
+    <p class="text-muted">
+        Bienvenido al sistema de gestión Papiers.
+    </p>
 
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <p class="text-secondary">Total de productos</p>
-                <h2 class="fw-bold">248</h2>
-                <span class="badge bg-primary-subtle text-primary">Productos registrados</span>
-            </div>
+    @if (!empty($productsError))
+        <div class="alert alert-warning">
+            No fue posible obtener los productos desde el Gateway.
         </div>
-    </div>
+    @else
 
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <p class="text-secondary">Unidades en inventario</p>
-                <h2 class="fw-bold">1.540</h2>
-                <span class="badge bg-success-subtle text-success">Existencias actuales</span>
-            </div>
-        </div>
-    </div>
+        @php
+            $products = $productsResponse['data']
+                ?? $productsResponse['products']
+                ?? [];
+        @endphp
 
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <p class="text-secondary">Proveedores</p>
-                <h2 class="fw-bold">18</h2>
-                <span class="badge bg-info-subtle text-info">Registrados</span>
-            </div>
-        </div>
-    </div>
+        <div class="row mt-4">
 
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <p class="text-secondary">Stock bajo</p>
-                <h2 class="fw-bold text-danger">12</h2>
-                <span class="badge bg-danger-subtle text-danger">Requieren atención</span>
-            </div>
-        </div>
-    </div>
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h6 class="text-muted">Productos consultados</h6>
 
-</div>
-
-<div class="row g-4">
-
-    <div class="col-lg-8">
-
-        <div class="card border-0 shadow-sm">
-
-            <div class="card-header bg-white py-3">
-                <h5 class="mb-0 fw-bold">Movimientos recientes</h5>
-            </div>
-
-            <div class="card-body">
-
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-
-                        <thead class="table-light">
-                            <tr>
-                                <th>Producto</th>
-                                <th>Tipo</th>
-                                <th>Cantidad</th>
-                                <th>Estado</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            <tr>
-                                <td>Cuaderno argollado</td>
-                                <td>Entrada</td>
-                                <td>50</td>
-                                <td><span class="badge bg-success">Completado</span></td>
-                            </tr>
-
-                            <tr>
-                                <td>Lápiz HB</td>
-                                <td>Salida</td>
-                                <td>20</td>
-                                <td><span class="badge bg-success">Completado</span></td>
-                            </tr>
-
-                            <tr>
-                                <td>Resaltadores</td>
-                                <td>Entrada</td>
-                                <td>30</td>
-                                <td><span class="badge bg-success">Completado</span></td>
-                            </tr>
-                        </tbody>
-
-                    </table>
+                        <h2>{{ count($products) }}</h2>
+                    </div>
                 </div>
-
             </div>
+
+            <div class="col-md-8 mb-3">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5>Estado del sistema</h5>
+
+                        <p class="mb-0">
+                            Conexión con el Gateway realizada.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
-    </div>
-
-    <div class="col-lg-4">
-
-        <div class="card border-0 shadow-sm">
-
-            <div class="card-header bg-white py-3">
-                <h5 class="mb-0 fw-bold">Alertas de inventario</h5>
-            </div>
-
+        <div class="card mt-3">
             <div class="card-body">
 
-                <div class="alert alert-danger">
-                    <strong>Marcadores permanentes</strong>
-                    <p class="mb-0">Solo quedan 3 unidades.</p>
-                </div>
+                <h5>Productos recientes</h5>
 
-                <div class="alert alert-warning">
-                    <strong>Cartulina blanca</strong>
-                    <p class="mb-0">Solo quedan 5 unidades.</p>
-                </div>
+                @if (count($products) > 0)
 
-                <div class="alert alert-warning mb-0">
-                    <strong>Borradores</strong>
-                    <p class="mb-0">Solo quedan 7 unidades.</p>
-                </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @foreach (array_slice($products, 0, 5) as $product)
+                                    <tr>
+                                        <td>{{ $product['id'] ?? '-' }}</td>
+
+                                        <td>
+                                            {{ $product['name'] ?? $product['nombre'] ?? 'Sin nombre' }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                @else
+
+                    <p class="text-muted">
+                        Todavía no hay productos para mostrar.
+                    </p>
+
+                @endif
 
             </div>
         </div>
 
-    </div>
+    @endif
 
 </div>
 
