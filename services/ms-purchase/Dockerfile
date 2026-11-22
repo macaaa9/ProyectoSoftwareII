@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Directorio de trabajo
-WORKDIR /var/www/html
+WORKDIR /var/www
 
 # Copiar archivos del proyecto
 COPY . .

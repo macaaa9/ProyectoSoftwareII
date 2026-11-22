@@ -38,9 +38,11 @@ return [
     'identity' => [
     'url' => env('IDENTITY_SERVICE_URL', 'http://127.0.0.1:8001'),
     ],
-    'catalog' => [
-        'url' => env('CATALOG_SERVICE_URL', 'http://catalog:8000'),
-    ],
+
+
+    'gateway' => [
+    'url' => env('GATEWAY_URL', 'http://localhost:8005'),
+],
 
 
 ];
