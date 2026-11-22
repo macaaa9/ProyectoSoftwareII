@@ -1,5 +1,9 @@
+
 services:
 
+  # ==========================================
+  # MESSAGE BROKER - RABBITMQ
+  # ==========================================
   rabbitmq:
     image: rabbitmq:3-management
     container_name: papiers-rabbitmq
@@ -13,6 +17,9 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
     restart: unless-stopped
 
+  # ==========================================
+  # SERVICE DISCOVERY - CONSUL
+  # ==========================================
   consul:
     image: hashicorp/consul:1.21
     container_name: papiers-consul
@@ -21,20 +28,26 @@ services:
     command: agent -dev -client=0.0.0.0
     restart: unless-stopped
 
-  mysql-identidad:
+  # ==========================================
+  # MYSQL - IDENTITY
+  # ==========================================
+  mysql-identity:
     image: mysql:8.0
-    container_name: papiers-mysql-identidad
+    container_name: papiers-mysql-identity
     environment:
       MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: papiers_identidad
+      MYSQL_DATABASE: papiers_identity
       MYSQL_USER: papiers
       MYSQL_PASSWORD: papiers123
     ports:
       - "3307:3306"
     volumes:
-      - mysql_identidad_data:/var/lib/mysql
+      - mysql_identity_data:/var/lib/mysql
     restart: unless-stopped
 
+  # ==========================================
+  # MYSQL - CATALOG
+  # ==========================================
   mysql-catalog:
     image: mysql:8.4
     container_name: papiers-mysql-catalog
@@ -49,6 +62,9 @@ services:
       - mysql_catalog_data:/var/lib/mysql
     restart: unless-stopped
 
+  # ==========================================
+  # MYSQL - INVENTORY
+  # ==========================================
   mysql-inventory:
     image: mysql:8.4
     container_name: papiers-mysql-inventory
@@ -63,8 +79,148 @@ services:
       - mysql_inventory_data:/var/lib/mysql
     restart: unless-stopped
 
+  # ==========================================
+  # MYSQL - PURCHASE
+  # ==========================================
+  mysql-purchase:
+    image: mysql:8.4
+    container_name: papiers-mysql-purchase
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: papiers_purchase
+      MYSQL_USER: purchase
+      MYSQL_PASSWORD: purchase_pw
+    ports:
+      - "3310:3306"
+    volumes:
+      - mysql_purchase_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # ==========================================
+  # MICROSERVICE - IDENTITY
+  # ==========================================
+  identity:
+    build:
+      context: ./services/ms-identity
+      dockerfile: Dockerfile
+    container_name: papiers-identity
+    ports:
+      - "8001:8000"
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: mysql-identity
+      DB_PORT: "3306"
+      DB_DATABASE: papiers_identity
+      DB_USERNAME: papiers
+      DB_PASSWORD: papiers123
+    depends_on:
+      - mysql-identity
+    restart: unless-stopped
+
+  # ==========================================
+  # MICROSERVICE - CATALOG
+  # ==========================================
+  catalog:
+    build:
+      context: ./services/ms-catalog
+      dockerfile: Dockerfile
+    container_name: papiers-catalog
+    ports:
+      - "8003:8000"
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: mysql-catalog
+      DB_PORT: "3306"
+      DB_DATABASE: papiers_catalog
+      DB_USERNAME: catalog
+      DB_PASSWORD: catalog_pw
+    depends_on:
+      - mysql-catalog
+    restart: unless-stopped
+
+  # ==========================================
+  # MICROSERVICE - INVENTORY
+  # ==========================================
+  inventory:
+    build:
+      context: ./services/ms-inventory
+      dockerfile: Dockerfile
+    container_name: papiers-inventory
+    ports:
+      - "8004:8000"
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: mysql-inventory
+      DB_PORT: "3306"
+      DB_DATABASE: papiers_inventory
+      DB_USERNAME: inventory
+      DB_PASSWORD: inventory_pw
+    depends_on:
+      - mysql-inventory
+    restart: unless-stopped
+
+  # ==========================================
+  # MICROSERVICE - PURCHASE
+  # ==========================================
+  purchase:
+    build:
+      context: ./services/ms-purchase
+      dockerfile: Dockerfile
+    container_name: papiers-purchase
+    ports:
+      - "8005:8000"
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: mysql-purchase
+      DB_PORT: "3306"
+      DB_DATABASE: papiers_purchase
+      DB_USERNAME: purchase
+      DB_PASSWORD: purchase_pw
+
+      # CONNECTION TO CATALOG
+      CATALOG_URL: http://catalog:8000
+      VALIDATE_PRODUCTS: "true"
+
+    depends_on:
+      mysql-purchase:
+        condition: service_healthy
+      catalog:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      consul:
+        condition: service_started
+    restart: unless-stopped
+
+  # ==========================================
+  # API GATEWAY
+  # ==========================================
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: papiers-gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      - identity
+      - catalog
+      - inventory
+      - purchase
+    restart: unless-stopped
+
+
+# ==========================================
+# PERSISTENT VOLUMES
+# ==========================================
 volumes:
   rabbitmq_data:
-  mysql_identidad_data:
+  mysql_identity_data:
   mysql_catalog_data:
   mysql_inventory_data:
+  mysql_purchase_data:
