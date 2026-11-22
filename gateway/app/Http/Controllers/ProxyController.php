@@ -67,6 +67,48 @@ class ProxyController extends Controller
         return $this->forward($request, 'identity');
     }
 
+        // PRODUCTS
+    public function getProducts(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    public function createProduct(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    public function showProduct(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    public function updateProduct(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    public function deleteProduct(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    // CATEGORIES
+    public function getCategories(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    public function createCategory(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    public function updateCategory(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
     // FORWARD REQUEST
     private function forward(Request $request, string $service): Response
     {
