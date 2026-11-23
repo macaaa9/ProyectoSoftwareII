@@ -3,11 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Services\EventPublisher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
+    public function __construct(private EventPublisher $events)
+    {
+    }
+
+    // Evento asíncrono: datos del producto para la base de lectura de ms-reportes
+    private function publicarProducto(Product $product): void
+    {
+        $this->events->publish('catalogo.producto.actualizado', 'ProductoActualizado', [
+            'producto_id' => $product->id,
+            'codigo' => $product->code,
+            'nombre' => $product->name,
+            'precio' => $product->price,
+            'activo' => (bool) $product->active,
+        ]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = Product::with('category:id,name');
@@ -48,6 +65,7 @@ class ProductController extends Controller
         ]);
 
         $product = Product::create($data);
+        $this->publicarProducto($product->fresh());
 
         return response()->json($product->load('category:id,name'), 201);
     }
@@ -71,6 +89,7 @@ class ProductController extends Controller
         ]);
 
         $product->update($data);
+        $this->publicarProducto($product->fresh());
 
         return response()->json($product->load('category:id,name'));
     }
@@ -79,6 +98,7 @@ class ProductController extends Controller
     public function destroy(Product $product): JsonResponse
     {
         $product->update(['active' => false]);
+        $this->publicarProducto($product->fresh());
 
         return response()->json(['message' => 'Product deactivated']);
     }
