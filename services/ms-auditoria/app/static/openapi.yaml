@@ -8,8 +8,7 @@ info:
     DevolucionProveedorRegistrada). La API es de solo lectura: PUT, PATCH y DELETE responden 405.
     Acceso únicamente a través del API Gateway (que valida el JWT).
 servers:
-  # Relativa al openapi.yaml: funciona directo (/openapi.yaml) y por el gateway (/api/<servicio>/openapi.yaml)
-  - url: ..
+  - url: /
 paths:
   /auditoria:
     get:

@@ -7,8 +7,7 @@ info:
     alimentada por los eventos ProductoActualizado, MovimientoRegistrado y EstadoStockCambiado.
     Nunca consulta la base de otro servicio (RNF02). Acceso solo a través del API Gateway.
 servers:
-  # Relativa al openapi.yaml: funciona directo (/openapi.yaml) y por el gateway (/api/<servicio>/openapi.yaml)
-  - url: ..
+  - url: /
 paths:
   /reportes/existencias:
     get:
