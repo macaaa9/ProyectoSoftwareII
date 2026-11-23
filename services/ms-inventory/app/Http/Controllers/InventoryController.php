@@ -5,11 +5,42 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
 use App\Models\StockMovement;
+use App\Services\EventPublisher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class InventoryController extends Controller
 {
+    public function __construct(private EventPublisher $events)
+    {
+    }
+
+    private const TIPOS_EVENTO = [
+        'entry' => 'entrada',
+        'exit' => 'salida',
+        'adjustment' => 'ajuste',
+    ];
+
+    private function estadoStock(InventoryItem $item): string
+    {
+        if ($item->quantity <= 0) {
+            return 'agotado';
+        }
+
+        return $item->quantity <= $item->minimum_stock ? 'stock_bajo' : 'disponible';
+    }
+
+    // Evento asíncrono: saldo actual de un producto (lo consume ms-reportes)
+    private function publicarEstado(InventoryItem $item): void
+    {
+        $this->events->publish('inventario.estado_stock.cambiado', 'EstadoStockCambiado', [
+            'producto_id' => $item->product_id,
+            'bodega_id' => config('services.rabbitmq.bodega_id'),
+            'cantidad' => $item->quantity,
+            'estado' => $this->estadoStock($item),
+        ]);
+    }
+
     // Consultar todo el inventario
     public function index()
     {
@@ -52,6 +83,8 @@ class InventoryController extends Controller
 
         $item = InventoryItem::create($validated);
 
+        $this->publicarEstado($item->fresh());
+
         return response()->json([
             'success' => true,
             'message' => 'Producto registrado en inventario',
@@ -78,6 +111,9 @@ class InventoryController extends Controller
         ]);
 
         $item->update($validated);
+
+        // El mínimo puede cambiar el estado (disponible / stock_bajo)
+        $this->publicarEstado($item->fresh());
 
         return response()->json([
             'success' => true,
@@ -141,6 +177,8 @@ class InventoryController extends Controller
     // Registrar entradas, salidas y ajustes de stock
     public function moveStock(Request $request, $productId)
     {
+        $usuarioId = $request->header('X-User-Id');
+
         $validated = $request->validate([
             'type' => 'required|in:entry,exit,adjustment',
             'quantity' => 'required|integer|min:1',
@@ -150,7 +188,8 @@ class InventoryController extends Controller
 
         return DB::transaction(function () use (
             $validated,
-            $productId
+            $productId,
+            $usuarioId
         ) {
             $item = InventoryItem::where(
                 'product_id',
@@ -197,6 +236,27 @@ class InventoryController extends Controller
                 'description' => $validated['description'] ?? null,
                 'reference_id' => $validated['reference_id'] ?? null,
             ]);
+
+            // Evento asíncrono hacia ms-auditoria y ms-reportes, solo si la transacción confirma
+            $fresco = $item->fresh();
+            DB::afterCommit(function () use ($movement, $fresco, $usuarioId) {
+                $this->events->publish('inventario.movimiento.registrado', 'MovimientoRegistrado', [
+                    'movimiento_id' => $movement->id,
+                    'producto_id' => $movement->product_id,
+                    'bodega_id' => config('services.rabbitmq.bodega_id'),
+                    'tipo' => self::TIPOS_EVENTO[$movement->type] ?? $movement->type,
+                    // En ajustes, quantity es el stock final: se envía la diferencia real
+                    'cantidad' => $movement->type === 'adjustment'
+                        ? abs($movement->new_stock - $movement->previous_stock)
+                        : $movement->quantity,
+                    'cantidad_anterior' => $movement->previous_stock,
+                    'cantidad_nueva' => $movement->new_stock,
+                    'estado' => $this->estadoStock($fresco),
+                    'motivo' => $movement->description,
+                    'referencia' => $movement->reference_id ? 'REF-'.$movement->reference_id : null,
+                    'usuario_id' => is_numeric($usuarioId) ? (int) $usuarioId : null,
+                ]);
+            });
 
             return response()->json([
                 'success' => true,

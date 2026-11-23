@@ -207,8 +207,16 @@ services:
       DB_DATABASE: papiers_catalog
       DB_USERNAME: catalog
       DB_PASSWORD: catalog_pw
+
+      # Eventos asíncronos -> ms-reportes
+      SERVICE_NAME: ms-catalog
+      RABBITMQ_MGMT_URL: http://rabbitmq:15672
+      RABBITMQ_USER: papiers
+      RABBITMQ_PASSWORD: papiers123
+      RABBITMQ_EXCHANGE: papiers.eventos
     depends_on:
       - mysql-catalog
+      - rabbitmq
     restart: unless-stopped
 
   # ==========================================
@@ -229,8 +237,17 @@ services:
       DB_USERNAME: inventory
       DB_PASSWORD: inventory_pw
       CATALOG_URL: http://catalog:8000
+
+      # Eventos asíncronos -> ms-auditoria / ms-reportes
+      SERVICE_NAME: ms-inventory
+      RABBITMQ_MGMT_URL: http://rabbitmq:15672
+      RABBITMQ_USER: papiers
+      RABBITMQ_PASSWORD: papiers123
+      RABBITMQ_EXCHANGE: papiers.eventos
     depends_on:
       mysql-inventory:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 

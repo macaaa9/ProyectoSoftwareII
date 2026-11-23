@@ -1,0 +1,27 @@
+# Pruebas de rendimiento · ms-reportes y ms-auditoria (resultados preliminares)
+
+- Fecha: 2026-11-22 22:58 (ejecución)
+- Destino: directo a los servicios (http://localhost:8007, http://localhost:8005)
+- Entorno: Sandbox Linux 2 vCPU · Python 3.13 · gunicorn 2 workers × 4 hilos por servicio · SQLite (200 productos, 400 existencias, 4.913 registros de auditoría) · Locust en la misma máquina
+- Herramienta: Locust (headless), una prueba a la vez
+- Resultado: **15 de 15 pruebas cumplen su meta**
+
+| Prueba | Descripción | Usuarios | Duración (s) | Peticiones | Peticiones/s | Promedio (ms) | p50 (ms) | p95 (ms) | p99 (ms) | Máx (ms) | % error | Meta p95 (ms) | Meta % error | Resultado |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| P01 | Línea base: health de ms-reportes (incluye ping a BD) | 10 | 30 | 286 | 9.9 | 3 | 3.0 | 4.0 | 12.0 | 21 | 0.0 | 300 | 1 | CUMPLE |
+| P02 | Existencias paginadas | 20 | 30 | 560 | 19.4 | 7 | 6.0 | 11.0 | 18.0 | 44 | 0.0 | 500 | 1 | CUMPLE |
+| P03 | Existencias filtradas por estado | 20 | 30 | 566 | 19.5 | 6 | 5.0 | 10.0 | 20.0 | 37 | 0.0 | 500 | 1 | CUMPLE |
+| P04 | Existencias con búsqueda por texto (LIKE) | 20 | 30 | 563 | 19.4 | 7 | 6.0 | 12.0 | 23.0 | 27 | 0.0 | 500 | 1 | CUMPLE |
+| P05 | Valorización agrupada por producto | 20 | 30 | 554 | 19.1 | 7 | 6.0 | 12.0 | 21.0 | 28 | 0.0 | 800 | 1 | CUMPLE |
+| P06 | Valorización agrupada por bodega | 20 | 30 | 559 | 19.5 | 5 | 5.0 | 9.0 | 16.0 | 21 | 0.0 | 500 | 1 | CUMPLE |
+| P07 | Rotación de productos en un rango de días | 20 | 30 | 559 | 19.4 | 9 | 8.0 | 16.0 | 29.0 | 54 | 0.0 | 800 | 1 | CUMPLE |
+| P08 | Productos en quiebre de stock | 20 | 30 | 563 | 19.4 | 6 | 5.0 | 11.0 | 22.0 | 27 | 0.0 | 500 | 1 | CUMPLE |
+| P09 | Dashboard (varias consultas agregadas) | 20 | 30 | 559 | 19.3 | 18 | 15.0 | 38.0 | 61.0 | 68 | 0.0 | 800 | 1 | CUMPLE |
+| P10 | Estrés: dashboard sin pausa, 50 usuarios | 50 | 30 | 4919 | 169.5 | 273 | 270.0 | 410.0 | 480.0 | 591 | 0.0 | 2000 | 5 | CUMPLE |
+| P11 | Línea base: health de ms-auditoria (incluye ping a BD) | 10 | 30 | 286 | 9.9 | 3 | 3.0 | 5.0 | 10.0 | 13 | 0.0 | 300 | 1 | CUMPLE |
+| P12 | Auditoría: listado paginado | 20 | 30 | 546 | 18.8 | 6 | 5.0 | 9.0 | 20.0 | 27 | 0.0 | 500 | 1 | CUMPLE |
+| P13 | Auditoría: filtros por producto, tipo y usuario | 20 | 30 | 559 | 19.3 | 7 | 6.0 | 12.0 | 23.0 | 30 | 0.0 | 500 | 1 | CUMPLE |
+| P14 | Carga mixta reportes + auditoría, 30 usuarios | 30 | 45 | 1250 | 28.4 | 9 | 6.0 | 20.0 | 33.0 | 56 | 0.0 | 800 | 1 | CUMPLE |
+| P15 | Resistencia: carga mixta sostenida 2 min, 40 usuarios | 40 | 120 | 4629 | 38.9 | 9 | 6.0 | 20.0 | 36.0 | 81 | 0.02 | 1000 | 1 | CUMPLE |
+
+Detalle por endpoint: `resultados_preliminares_local/Pxx_stats.csv`; fallos: `resultados_preliminares_local/Pxx_failures.csv`.
