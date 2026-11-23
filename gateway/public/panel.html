@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Papiers · Panel de pruebas</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --ink: #1d2433; --muted: #667085; --line: #e4e7ec;
+    --brand: #1f6feb; --ok: #12805c; --okbg: #e7f6ef; --bad: #b42318; --badbg: #fdecea;
+    --warn: #a15c07; --warnbg: #fff4e0; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+  header { background: #101828; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  header small { color: #98a2b3; }
+  nav { display: flex; gap: 4px; padding: 0 24px; background: #fff; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  nav button { border: 0; background: none; padding: 12px 14px; font: inherit; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+  nav button.on { color: var(--brand); border-color: var(--brand); font-weight: 600; }
+  main { max-width: 1200px; margin: 0 auto; padding: 20px 24px 60px; }
+  section.tab { display: none; } section.tab.on { display: block; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 4px; }
+  .card p.hint { color: var(--muted); margin: 0 0 12px; font-size: 13px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 2px; }
+  input, select { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
+  .row { display: flex; gap: 8px; } .row > * { flex: 1; }
+  button.b { margin-top: 12px; padding: 8px 14px; border: 0; border-radius: 6px; background: var(--brand); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  button.b.sec { background: #eef2f6; color: var(--ink); }
+  button.b:disabled { opacity: .5; cursor: wait; }
+  .out { margin-top: 12px; }
+  .status { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .s-ok { background: var(--okbg); color: var(--ok); } .s-bad { background: var(--badbg); color: var(--bad); }
+  .s-wait { background: var(--warnbg); color: var(--warn); } .s-idle { background: #eef2f6; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; background: #fafbfc; position: sticky; top: 0; }
+  .tablewrap { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  details { margin-top: 8px; } summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  pre { background: #0d1117; color: #d0d7de; padding: 10px; border-radius: 8px; overflow: auto; max-height: 300px; font: 12px/1.45 var(--mono); }
+  .meta { font: 12px var(--mono); color: var(--muted); }
+  .services { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .svc { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: #fff; }
+  .svc b { display: block; } .svc .meta { display: block; margin-top: 4px; }
+  ol.steps { list-style: none; padding: 0; margin: 12px 0 0; counter-reset: s; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  ol.steps li::before { content: counter(s); width: 24px; height: 24px; border-radius: 50%; background: #eef2f6; color: var(--muted); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+  ol.steps li.ok::before { background: var(--okbg); color: var(--ok); content: "✓"; }
+  ol.steps li.bad::before { background: var(--badbg); color: var(--bad); content: "✕"; }
+  ol.steps li.run::before { background: var(--warnbg); color: var(--warn); }
+  .steps .t { font-weight: 600; } .steps .d { color: var(--muted); font-size: 13px; }
+  .kpis { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-top: 8px; }
+  .kpi { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #fafbfc; }
+  .kpi span { display: block; font-size: 12px; color: var(--muted); } .kpi b { font-size: 20px; }
+  a { color: var(--brand); }
+  .links a { display: block; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; text-decoration: none; background: #fff; }
+  .links a small { display: block; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Papiers · Panel de pruebas</h1>
+  <small>Todo pasa por el API Gateway: <span class="meta" id="base"></span></small>
+</header>
+<nav id="tabs">
+  <button data-t="inicio" class="on">Inicio</button>
+  <button data-t="catalogo">Catálogo</button>
+  <button data-t="inventario">Inventario</button>
+  <button data-t="compras">Compras</button>
+  <button data-t="reportes">Reportes</button>
+  <button data-t="auditoria">Auditoría</button>
+  <button data-t="identidad">Identidad</button>
+  <button data-t="herramientas">Herramientas</button>
+</nav>
+<main>
+
+<!-- ============ INICIO ============ -->
+<section class="tab on" id="t-inicio">
+  <div class="card">
+    <h2>Estado de los microservicios</h2>
+    <p class="hint">Cada tarjeta hace una petición real a través del gateway y muestra el código HTTP y el tiempo de respuesta.</p>
+    <div class="services" id="svcs"></div>
+    <button class="b sec" onclick="revisarEstado()">Volver a revisar</button>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Flujo completo de punta a punta</h2>
+    <p class="hint">Crea un producto, le carga inventario, registra una venta y espera a que el evento llegue por RabbitMQ a
+      ms-reportes y ms-auditoria. Al final crea una orden de compra, para la que ms-purchase consulta a ms-catalog por REST.</p>
+    <button class="b" id="btnFlujo" onclick="flujo()">Ejecutar flujo</button>
+    <ol class="steps" id="pasos"></ol>
+    <div class="kpis" id="flujoKpis"></div>
+  </div>
+</section>
+
+<!-- ============ CATÁLOGO ============ -->
+<section class="tab" id="t-catalogo">
+  <div class="grid">
+    <div class="card">
+      <h2>Nueva categoría</h2>
+      <label>Nombre</label><input id="catNombre" placeholder="Papelería">
+      <button class="b" onclick="enviar('POST','/categories',{name:v('catNombre')},'outCat',cargarCategorias)">Crear</button>
+      <div class="out" id="outCat"></div>
+    </div>
+    <div class="card">
+      <h2>Nuevo producto</h2>
+      <p class="hint">Al guardarlo, ms-catalog publica <code>ProductoActualizado</code> y ms-reportes lo recibe.</p>
+      <div class="row"><div><label>Código</label><input id="pCod" placeholder="P-0100"></div>
+        <div><label>Unidad</label><input id="pUni" value="und"></div></div>
+      <label>Nombre</label><input id="pNom" placeholder="Cuaderno cuadriculado 100 hojas">
+      <div class="row"><div><label>Categoría</label><select id="pCat"></select></div>
+        <div><label>Precio</label><input id="pPre" type="number" value="4500"></div></div>
+      <button class="b" onclick="crearProducto()">Crear</button>
+      <div class="out" id="outProd"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Productos</h2>
+    <div class="row"><input id="pBuscar" placeholder="Buscar por nombre o código"><span></span></div>
+    <button class="b sec" onclick="consultar('/products?per_page=100'+(v('pBuscar')?'&q='+encodeURIComponent(v('pBuscar')):''),'outProds')">Consultar</button>
+    <div class="out" id="outProds"></div>
+  </div>
+</section>
+
+<!-- ============ INVENTARIO ============ -->
+<section class="tab" id="t-inventario">
+  <div class="grid">
+    <div class="card">
+      <h2>Registrar producto en inventario</h2>
+      <div class="row"><div><label>ID del producto</label><input id="iProd" type="number" min="1"></div>
+        <div><label>Cantidad inicial</label><input id="iCant" type="number" value="50"></div>
+        <div><label>Stock mínimo</label><input id="iMin" type="number" value="10"></div></div>
+      <button class="b" onclick="enviar('POST','/inventory',{product_id:+v('iProd'),quantity:+v('iCant'),minimum_stock:+v('iMin')},'outInv')">Registrar</button>
+      <div class="out" id="outInv"></div>
+    </div>
+    <div class="card">
+      <h2>Movimiento de stock</h2>
+      <p class="hint">Publica <code>MovimientoRegistrado</code>: llega a reportes (existencias) y a auditoría.</p>
+      <div class="row"><div><label>ID del producto</label><input id="mProd" type="number" min="1"></div>
+        <div><label>Tipo</label><select id="mTipo"><option value="exit">Salida</option><option value="entry">Entrada</option><option value="adjustment">Ajuste (stock final)</option></select></div>
+        <div><label>Cantidad</label><input id="mCant" type="number" value="5"></div></div>
+      <label>Descripción</label><input id="mDesc" value="Venta mostrador">
+      <button class="b" onclick="enviar('POST','/inventory/'+v('mProd')+'/movements',{type:v('mTipo'),quantity:+v('mCant'),description:v('mDesc')},'outMov')">Registrar movimiento</button>
+      <div class="out" id="outMov"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Consultas</h2>
+    <button class="b sec" onclick="consultar('/inventory','outInvL')">Todo el inventario</button>
+    <button class="b sec" onclick="consultar('/inventory/low-stock','outInvL')">Stock bajo</button>
+    <button class="b sec" onclick="consultar('/movements','outInvL')">Movimientos</button>
+    <div class="out" id="outInvL"></div>
+  </div>
+</section>
+
+<!-- ============ COMPRAS ============ -->
+<section class="tab" id="t-compras">
+  <div class="grid">
+    <div class="card">
+      <h2>Nuevo proveedor</h2>
+      <label>Nombre</label><input id="sNom" placeholder="Distribuidora Andina S.A.S.">
+      <div class="row"><div><label>NIT</label><input id="sNit" placeholder="900123456-7"></div>
+        <div><label>Teléfono</label><input id="sTel"></div></div>
+      <button class="b" onclick="enviar('POST','/suppliers',{name:v('sNom'),tax_id:v('sNit'),phone:v('sTel')||null},'outSup')">Crear</button>
+      <div class="out" id="outSup"></div>
+    </div>
+    <div class="card">
+      <h2>Nueva orden de compra</h2>
+      <p class="hint">ms-purchase valida cada producto llamando a ms-catalog por REST.</p>
+      <div class="row"><div><label>ID proveedor</label><input id="oSup" type="number"></div>
+        <div><label>ID producto</label><input id="oProd" type="number"></div></div>
+      <div class="row"><div><label>Cantidad</label><input id="oCant" type="number" value="20"></div>
+        <div><label>Precio unitario</label><input id="oPre" type="number" value="3000"></div></div>
+      <button class="b" onclick="enviar('POST','/purchase-orders',{supplier_id:+v('oSup'),items:[{product_id:+v('oProd'),quantity:+v('oCant'),unit_price:+v('oPre')}]},'outOrd')">Crear orden</button>
+      <div class="out" id="outOrd"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Consultas</h2>
+    <button class="b sec" onclick="consultar('/suppliers','outComL')">Proveedores</button>
+    <button class="b sec" onclick="consultar('/purchase-orders','outComL')">Órdenes de compra</button>
+    <div class="out" id="outComL"></div>
+  </div>
+</section>
+
+<!-- ============ REPORTES ============ -->
+<section class="tab" id="t-reportes">
+  <div class="card">
+    <h2>Reportes (ms-reportes · Flask)</h2>
+    <p class="hint">Solo lectura. Los datos llegan únicamente por eventos.</p>
+    <button class="b" onclick="dashboard()">Dashboard</button>
+    <button class="b sec" onclick="consultar('/reportes/existencias?por_pagina=200','outRep')">Existencias</button>
+    <button class="b sec" onclick="consultar('/reportes/existencias?estado=stock_bajo','outRep')">Stock bajo</button>
+    <button class="b sec" onclick="consultar('/reportes/valorizacion?agrupar=producto','outRep')">Valorización por producto</button>
+    <button class="b sec" onclick="consultar('/reportes/valorizacion?agrupar=bodega','outRep')">Valorización por bodega</button>
+    <button class="b sec" onclick="consultar('/reportes/rotacion?dias=30','outRep')">Rotación 30 días</button>
+    <button class="b sec" onclick="consultar('/reportes/quiebres','outRep')">Quiebres</button>
+    <div class="out" id="outRep"></div>
+  </div>
+</section>
+
+<!-- ============ AUDITORÍA ============ -->
+<section class="tab" id="t-auditoria">
+  <div class="card">
+    <h2>Bitácora de auditoría (ms-auditoria · Flask)</h2>
+    <p class="hint">Inmutable: no admite PUT ni DELETE. Filtra por cualquiera de los campos.</p>
+    <div class="row">
+      <div><label>Producto</label><input id="aProd" type="number"></div>
+      <div><label>Tipo</label><select id="aTipo"><option value="">Todos</option><option>SALIDA</option><option>ENTRADA</option><option>AJUSTE</option><option>RECEPCION_MERCANCIA</option></select></div>
+      <div><label>Usuario</label><input id="aUsr" type="number"></div>
+      <div><label>Fecha</label><input id="aFecha" type="date"></div>
+    </div>
+    <button class="b" onclick="auditoria()">Consultar</button>
+    <button class="b sec" onclick="enviar('DELETE','/auditoria/1',null,'outAud')">Intentar borrar un registro</button>
+    <div class="out" id="outAud"></div>
+  </div>
+</section>
+
+<!-- ============ IDENTIDAD ============ -->
+<section class="tab" id="t-identidad">
+  <div class="grid">
+    <div class="card">
+      <h2>Iniciar sesión</h2>
+      <p class="hint">Devuelve un JWT. El usuario administrador se crea con <code>php artisan db:seed</code> en ms-identity.</p>
+      <label>Correo</label><input id="lMail" value="admin@papiers.test">
+      <label>Contraseña</label><input id="lPass" type="password" value="Admin12345!">
+      <button class="b" onclick="login()">Entrar</button>
+      <div class="out" id="outLogin"></div>
+    </div>
+    <div class="card">
+      <h2>Consultas</h2>
+      <button class="b sec" onclick="consultar('/users','outIdL')">Usuarios</button>
+      <button class="b sec" onclick="consultar('/roles','outIdL')">Roles</button>
+      <div class="out" id="outIdL"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HERRAMIENTAS ============ -->
+<section class="tab" id="t-herramientas">
+  <div class="grid">
+    <div class="card links">
+      <h2>Documentación de las APIs (Swagger)</h2>
+      <a href="/api/reportes/docs" target="_blank">ms-reportes · Swagger UI <small>/api/reportes/docs (pasa por el gateway)</small></a>
+      <a href="/api/auditoria/docs" target="_blank">ms-auditoria · Swagger UI <small>/api/auditoria/docs (pasa por el gateway)</small></a>
+    </div>
+    <div class="card links">
+      <h2>Infraestructura</h2>
+      <a href="http://localhost:15672/#/queues" target="_blank">RabbitMQ <small>Usuario papiers / papiers123 · colas, mensajes por segundo y colas de error (DLQ)</small></a>
+      <a href="http://localhost:15672/#/exchanges/%2F/papiers.eventos" target="_blank">Exchange papiers.eventos <small>Muestra qué colas están enlazadas y con qué routing keys</small></a>
+      <a href="http://localhost:8500/ui" target="_blank">Consul <small>Registro de servicios</small></a>
+    </div>
+  </div>
+</section>
+
+</main>
+<script>
+const API = location.origin + '/api';
+document.getElementById('base').textContent = API;
+const v = id => document.getElementById(id).value.trim();
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let TOKEN = null;
+
+// ---------- pestañas ----------
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('section.tab').forEach(s => s.classList.toggle('on', s.id === 't-' + b.dataset.t));
+  if (b.dataset.t === 'catalogo') cargarCategorias();
+});
+
+// ---------- HTTP ----------
+async function api(method, path, body) {
+  const t0 = performance.now();
+  const headers = { 'Accept': 'application/json' };
+  if (body) headers['Content-Type'] = 'application/json';
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  let status = 0, data = null;
+  try {
+    const r = await fetch(API + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+    status = r.status;
+    const txt = await r.text();
+    try { data = JSON.parse(txt); } catch { data = txt; }
+  } catch (e) { data = { error: 'Sin conexión con el gateway', detalle: String(e) }; }
+  return { ok: status >= 200 && status < 300, status, data, ms: Math.round(performance.now() - t0), method, path };
+}
+
+// Extrae la lista de filas de las distintas formas de respuesta de los servicios
+function filas(d) {
+  if (Array.isArray(d)) return d;
+  if (!d || typeof d !== 'object') return null;
+  for (const k of ['datos', 'data', 'items', 'top_mayor', 'productos', 'grupos']) {
+    if (Array.isArray(d[k])) return d[k];
+    if (d[k] && Array.isArray(d[k].data)) return d[k].data;
+  }
+  return null;
+}
+
+function tabla(rows) {
+  if (!rows.length) return '<p class="hint">Sin registros.</p>';
+  const cols = [...new Set(rows.flatMap(r => Object.keys(r)))].filter(c => !['created_at','updated_at','password','evento_id','email_verified_at','remember_token'].includes(c)).slice(0, 12);
+  const cel = x => (x && typeof x === 'object') ? esc(x.name ?? x.nombre ?? JSON.stringify(x)) : esc(x);
+  return `<div class="tablewrap"><table><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>` +
+    rows.map(r => `<tr>${cols.map(c => `<td>${cel(r[c])}</td>`).join('')}</tr>`).join('') + '</tbody></table></div>';
+}
+
+function pintar(outId, r) {
+  const cls = r.ok ? 's-ok' : 's-bad';
+  const rows = filas(r.data);
+  let msg = '';
+  if (!r.ok && r.data && typeof r.data === 'object') msg = r.data.message || r.data.mensaje || r.data.error || '';
+  $(outId).innerHTML =
+    `<span class="status ${cls}">HTTP ${r.status || '—'}</span> <span class="meta">${r.method} /api${esc(r.path)} · ${r.ms} ms</span>` +
+    (msg ? `<p style="color:var(--bad);margin:6px 0 0">${esc(msg)}</p>` : '') +
+    (r.ok && rows ? tabla(rows) : '') +
+    `<details ${(!rows || !r.ok) ? 'open' : ''}><summary>Respuesta JSON</summary><pre>${esc(JSON.stringify(r.data, null, 2))}</pre></details>`;
+}
+
+async function consultar(path, outId) { $(outId).innerHTML = '<span class="status s-wait">Consultando…</span>'; pintar(outId, await api('GET', path)); }
+async function enviar(method, path, body, outId, despues) {
+  $(outId).innerHTML = '<span class="status s-wait">Enviando…</span>';
+  const r = await api(method, path, body); pintar(outId, r);
+  if (r.ok && despues) despues();
+  return r;
+}
+
+// ---------- estado ----------
+const SERVICIOS = [
+  ['Gateway + ms-identity', '/roles'],
+  ['ms-catalog', '/categories'],
+  ['ms-inventory', '/inventory'],
+  ['ms-purchase', '/suppliers'],
+  ['ms-reportes (Flask)', '/reportes/health'],
+  ['ms-auditoria (Flask)', '/auditoria/health'],
+];
+async function revisarEstado() {
+  $('svcs').innerHTML = SERVICIOS.map((s, i) => `<div class="svc" id="svc${i}"><b>${s[0]}</b><span class="status s-wait">Revisando…</span><span class="meta">GET /api${s[1]}</span></div>`).join('');
+  await Promise.all(SERVICIOS.map(async ([nombre, path], i) => {
+    const r = await api('GET', path);
+    $('svc' + i).innerHTML = `<b>${nombre}</b><span class="status ${r.ok ? 's-ok' : 's-bad'}">${r.ok ? 'Disponible' : 'Falla'} · HTTP ${r.status || '—'}</span><span class="meta">GET /api${path} · ${r.ms} ms</span>`;
+  }));
+}
+
+// ---------- catálogo ----------
+async function cargarCategorias() {
+  const r = await api('GET', '/categories');
+  const cats = filas(r.data) || [];
+  $('pCat').innerHTML = cats.length ? cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('') : '<option value="">Crea una categoría primero</option>';
+}
+function crearProducto() {
+  enviar('POST', '/products', { code: v('pCod'), name: v('pNom'), category_id: +v('pCat'), unit: v('pUni'), price: +v('pPre') }, 'outProd');
+}
+
+// ---------- reportes ----------
+async function dashboard() {
+  const r = await api('GET', '/reportes/dashboard');
+  pintar('outRep', r);
+  if (!r.ok) return;
+  const d = r.data, q = d.quiebres || {};
+  $('outRep').insertAdjacentHTML('afterbegin', `<div class="kpis">
+    <div class="kpi"><span>Productos activos</span><b>${d.productos_activos ?? '—'}</b></div>
+    <div class="kpi"><span>En quiebre</span><b>${q.en_quiebre ?? '—'}</b></div>
+    <div class="kpi"><span>% quiebre</span><b>${q.porcentaje_quiebre ?? '—'}%</b></div>
+    <div class="kpi"><span>Sin precio</span><b>${d.productos_sin_precio ?? '—'}</b></div></div>`);
+}
+
+// ---------- auditoría ----------
+function auditoria() {
+  const p = new URLSearchParams({ por_pagina: 100 });
+  if (v('aProd')) p.set('producto', v('aProd'));
+  if (v('aTipo')) p.set('tipo', v('aTipo'));
+  if (v('aUsr')) p.set('usuario', v('aUsr'));
+  if (v('aFecha')) p.set('fecha', v('aFecha'));
+  consultar('/auditoria?' + p, 'outAud');
+}
+
+// ---------- identidad ----------
+async function login() {
+  const r = await enviar('POST', '/auth/login', { email: v('lMail'), password: v('lPass') }, 'outLogin');
+  if (r.ok && r.data.access_token) {
+    TOKEN = r.data.access_token;
+    $('outLogin').insertAdjacentHTML('afterbegin', `<p><span class="status s-ok">Sesión iniciada</span> El token se enviará en las siguientes peticiones.</p>`);
+  }
+}
+
+// ---------- flujo completo ----------
+const espera = ms => new Promise(r => setTimeout(r, ms));
+function paso(titulo) {
+  const li = document.createElement('li'); li.className = 'run';
+  li.innerHTML = `<div><div class="t">${esc(titulo)}</div><div class="d">En curso…</div></div><span class="meta"></span>`;
+  $('pasos').appendChild(li);
+  return {
+    fin(ok, detalle, ms) { li.className = ok ? 'ok' : 'bad'; li.querySelector('.d').innerHTML = detalle; li.querySelector('.meta').textContent = ms != null ? ms + ' ms' : ''; },
+  };
+}
+async function llamar(titulo, method, path, body, describir) {
+  const p = paso(titulo);
+  const r = await api(method, path, body);
+  const msg = r.ok ? describir(r.data) : `HTTP ${r.status}: ${esc((r.data && (r.data.message || r.data.mensaje || r.data.error)) || JSON.stringify(r.data))}`;
+  p.fin(r.ok, `<span class="meta">${method} /api${esc(path)}</span><br>${msg}`, r.ms);
+  if (!r.ok) throw new Error(titulo);
+  return r.data;
+}
+async function esperarEvento(titulo, path, condicion, describir) {
+  const p = paso(titulo);
+  const t0 = performance.now();
+  for (let i = 0; i < 40; i++) {
+    const r = await api('GET', path);
+    const fila = r.ok ? (filas(r.data) || []).find(condicion) : null;
+    if (fila) { const ms = Math.round(performance.now() - t0); p.fin(true, `<span class="meta">GET /api${esc(path)}</span><br>${describir(fila)}`, ms); return ms; }
+    await espera(250);
+  }
+  p.fin(false, 'El evento no llegó en 10 s. Revisa el worker en RabbitMQ (pestaña Herramientas).', null);
+  throw new Error(titulo);
+}
+async function flujo() {
+  const btn = $('btnFlujo'); btn.disabled = true; $('pasos').innerHTML = ''; $('flujoKpis').innerHTML = '';
+  const ts = Date.now().toString().slice(-6), t0 = performance.now();
+  try {
+    const cat = await llamar('Crear categoría (ms-catalog)', 'POST', '/categories', { name: 'Demo ' + ts }, d => `Categoría #${d.id} «${esc(d.name)}»`);
+    const prod = await llamar('Crear producto (ms-catalog → evento ProductoActualizado)', 'POST', '/products',
+      { code: 'DEMO-' + ts, name: 'Producto demo ' + ts, category_id: cat.id, unit: 'und', price: 2500 }, d => `Producto #${d.id} ${esc(d.code)} a $${esc(d.price)}`);
+    await llamar('Registrar 50 unidades en inventario (ms-inventory → evento EstadoStockCambiado)', 'POST', '/inventory',
+      { product_id: prod.id, quantity: 50, minimum_stock: 10 }, d => `Stock inicial ${d.data.quantity}, mínimo ${d.data.minimum_stock}`);
+    await llamar('Vender 45 unidades (ms-inventory → evento MovimientoRegistrado)', 'POST', `/inventory/${prod.id}/movements`,
+      { type: 'exit', quantity: 45, description: 'Venta demo panel' }, d => `Stock ${d.movement.previous_stock} → ${d.movement.new_stock}`);
+    const msRep = await esperarEvento('Esperar el evento en ms-reportes (RabbitMQ)', `/reportes/existencias?producto=${prod.id}`,
+      f => f.producto_id === prod.id && f.cantidad === 5, f => `Existencia ${f.cantidad} · estado <b>${esc(f.estado)}</b> · valor $${esc(f.valor)}`);
+    const msAud = await esperarEvento('Esperar el evento en ms-auditoria (RabbitMQ)', `/auditoria?producto=${prod.id}`,
+      f => f.producto_id === prod.id, f => `${esc(f.tipo_operacion)} · ${f.cantidad_anterior} − ${f.cantidad_modificada} · ref ${esc(f.referencia)}`);
+    const sup = await llamar('Crear proveedor (ms-purchase)', 'POST', '/suppliers', { name: 'Proveedor demo ' + ts, tax_id: '900' + ts }, d => `Proveedor #${d.id}`);
+    await llamar('Crear orden de compra (ms-purchase valida el producto en ms-catalog por REST)', 'POST', '/purchase-orders',
+      { supplier_id: sup.id, items: [{ product_id: prod.id, quantity: 100, unit_price: 1800 }] }, d => `Orden #${d.id} · estado ${esc(d.status)} · total $${esc(d.total)}`);
+    $('flujoKpis').innerHTML = `
+      <div class="kpi"><span>Resultado</span><b style="color:var(--ok)">Todo OK</b></div>
+      <div class="kpi"><span>Evento → ms-reportes</span><b>${msRep} ms</b></div>
+      <div class="kpi"><span>Evento → ms-auditoria</span><b>${msAud} ms</b></div>
+      <div class="kpi"><span>Flujo total</span><b>${Math.round(performance.now() - t0)} ms</b></div>`;
+  } catch (e) {
+    $('flujoKpis').innerHTML = `<div class="kpi"><span>Resultado</span><b style="color:var(--bad)">Falló en: ${esc(e.message)}</b></div>`;
+  } finally { btn.disabled = false; }
+}
+
+revisarEstado();
+</script>
+</body>
+</html>
