@@ -9,13 +9,19 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ProxyController extends Controller
 {
-    // LOGIN
+    // ==========================================
+    // IDENTITY - LOGIN
+    // ==========================================
+
     public function login(Request $request): Response
     {
         return $this->forward($request, 'identity');
     }
 
-    // ROLES
+    // ==========================================
+    // IDENTITY - ROLES
+    // ==========================================
+
     public function getRoles(Request $request): Response
     {
         return $this->forward($request, 'identity');
@@ -41,7 +47,10 @@ class ProxyController extends Controller
         return $this->forward($request, 'identity');
     }
 
-    // USERS
+    // ==========================================
+    // IDENTITY - USERS
+    // ==========================================
+
     public function getUsers(Request $request): Response
     {
         return $this->forward($request, 'identity');
@@ -67,9 +76,129 @@ class ProxyController extends Controller
         return $this->forward($request, 'identity');
     }
 
-    // FORWARD REQUEST
-    private function forward(Request $request, string $service): Response
+    // ==========================================
+    // CATALOG - PRODUCTS
+    // ==========================================
+
+    public function getProducts(Request $request): Response
     {
+        return $this->forward($request, 'catalog');
+    }
+
+    public function createProduct(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    public function showProduct(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    public function updateProduct(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    public function deleteProduct(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    // ==========================================
+    // CATALOG - CATEGORIES
+    // ==========================================
+
+    public function getCategories(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    public function createCategory(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    public function updateCategory(Request $request): Response
+    {
+        return $this->forward($request, 'catalog');
+    }
+
+    // ==========================================
+    // PURCHASE
+    // ==========================================
+
+    public function purchase(Request $request): Response
+    {
+        return $this->forward($request, 'purchase');
+    }
+
+    // ==========================================
+    // INVENTORY
+    // ==========================================
+
+    public function inventory(Request $request): Response
+    {
+        return $this->forward($request, 'inventory');
+    }
+
+    // ==========================================
+    // AUDITORIA - FLASK
+    // ==========================================
+
+    public function audit(Request $request): Response
+    {
+        $path = $this->flaskPath($request, 'auditoria');
+
+        return $this->forward($request, 'audit', $path);
+    }
+
+    // ==========================================
+    // REPORTES - FLASK
+    // ==========================================
+
+    public function reports(Request $request): Response
+    {
+        $path = $this->flaskPath($request, 'reportes');
+
+        return $this->forward($request, 'reports', $path);
+    }
+
+    // ==========================================
+    // ADAPTAR RUTAS LARAVEL A FLASK
+    // ==========================================
+
+    private function flaskPath(Request $request, string $prefix): string
+    {
+        $path = preg_replace('#^api/#', '', $request->path());
+
+        // Las rutas de salud, documentación y OpenAPI
+        // de Flask no tienen el prefijo del microservicio.
+
+        $specialPaths = [
+            $prefix . '/health' => 'health',
+            $prefix . '/health/live' => 'health/live',
+            $prefix . '/docs' => 'docs',
+            $prefix . '/openapi.yaml' => 'openapi.yaml',
+        ];
+
+        if (isset($specialPaths[$path])) {
+            return $specialPaths[$path];
+        }
+
+        return $path;
+    }
+
+    // ==========================================
+    // FORWARD REQUEST
+    // ==========================================
+
+    private function forward(
+        Request $request,
+        string $service,
+        ?string $targetPath = null
+    ): Response {
+
         $base = rtrim(config("gateway.services.$service"), '/');
 
         if (!$base) {
@@ -78,7 +207,9 @@ class ProxyController extends Controller
             ], 500);
         }
 
-        $url = $base . '/' . $request->path();
+        $path = $targetPath ?? $request->path();
+
+        $url = $base . '/' . ltrim($path, '/');
 
         $headers = [
             'Accept' => 'application/json',
@@ -94,8 +225,9 @@ class ProxyController extends Controller
         }
 
         try {
+
             $response = Http::withHeaders($headers)
-                ->timeout(10)
+                ->timeout(15)
                 ->send($request->method(), $url, [
                     'query' => $request->query(),
                     'body' => $request->getContent(),
@@ -108,15 +240,20 @@ class ProxyController extends Controller
                 ]);
 
         } catch (ConnectionException $e) {
+
             return response()->json([
-                'message' => "Service '$service' unavailable"
+                'message' => "Service '$service' unavailable",
+                'service' => $service,
             ], 503);
+
         }
 
-        return response($response->body(), $response->status())
-            ->header(
-                'Content-Type',
-                $response->header('Content-Type') ?? 'application/json'
-            );
+        return response(
+            $response->body(),
+            $response->status()
+        )->header(
+            'Content-Type',
+            $response->header('Content-Type') ?? 'application/json'
+        );
     }
 }

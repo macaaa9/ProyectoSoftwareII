@@ -37,10 +37,12 @@ return [
 
     'identity' => [
     'url' => env('IDENTITY_SERVICE_URL', 'http://127.0.0.1:8001'),
+    ],
+
+
+    'gateway' => [
+    'url' => env('GATEWAY_URL', 'http://localhost:8005'),
 ],
 
-'products' => [
-    'url' => env('PRODUCTS_SERVICE_URL', 'http://127.0.0.1:8002'),
-],
 
 ];

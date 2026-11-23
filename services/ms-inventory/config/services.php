@@ -35,4 +35,16 @@ return [
         ],
     ],
 
+    // Publicación de eventos en RabbitMQ (ver app/Services/EventPublisher.php)
+    'rabbitmq' => [
+        'enabled' => (bool) env('EVENTS_ENABLED', true),
+        'mgmt_url' => env('RABBITMQ_MGMT_URL', 'http://rabbitmq:15672'),
+        'vhost' => env('RABBITMQ_VHOST', '/'),
+        'exchange' => env('RABBITMQ_EXCHANGE', 'papiers.eventos'),
+        'user' => env('RABBITMQ_USER', 'papiers'),
+        'password' => env('RABBITMQ_PASSWORD', 'papiers123'),
+        'service_name' => env('SERVICE_NAME', 'ms-inventory'),
+        'bodega_id' => (int) env('INVENTORY_WAREHOUSE_ID', 1),
+    ],
+
 ];

@@ -1,85 +1,110 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <title>@yield('title', 'Papiers')</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <style>
+        body {
+            background: #f5f6fa;
+        }
+
+        .sidebar {
+            min-height: 100vh;
+            background: white;
+            border-right: 1px solid #e5e5e5;
+        }
+
+        .sidebar a {
+            display: block;
+            padding: 10px 12px;
+            margin-bottom: 5px;
+            color: #333;
+            text-decoration: none;
+            border-radius: 6px;
+        }
+
+        .sidebar a:hover,
+        .sidebar a.active {
+            background: #e9edf5;
+            color: #202938;
+        }
+
+        .section-title {
+            margin-top: 20px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #888;
+            font-weight: bold;
+        }
+    </style>
 </head>
-<body class="bg-light">
 
-    <nav class="navbar navbar-dark bg-dark px-4">
-        <a class="navbar-brand fw-bold" href="{{ route('dashboard') }}">
-            ✦ Papiers
-        </a>
+<body>
 
-        <div class="text-white">
-            Administrador
-        </div>
-    </nav>
+<nav class="navbar navbar-dark bg-dark px-4">
+    <a class="navbar-brand fw-bold" href="{{ route('dashboard') }}">
+        ✦ Papiers
+    </a>
 
-    <div class="container-fluid">
-        <div class="row">
+    <div class="d-flex align-items-center gap-3 text-white">
+        <span>
+            {{ session('user.name') ?? 'Usuario' }}
+        </span>
 
-            <aside class="col-md-2 bg-white border-end min-vh-100 p-3">
-
-                <h6 class="text-secondary mb-3">MENÚ PRINCIPAL</h6>
-
-                <div class="nav flex-column nav-pills gap-2">
-
-                    <a href="{{ route('dashboard') }}" class="nav-link active">
-                        Dashboard
-                    </a>
-
-                    <a href="#" class="nav-link text-dark">
-                        Productos
-                    </a>
-
-                    <a href="#" class="nav-link text-dark">
-                        Categorías
-                    </a>
-
-                    <a href="#" class="nav-link text-dark">
-                        Proveedores
-                    </a>
-
-                    <hr>
-
-                    <h6 class="text-secondary">INVENTARIO</h6>
-
-                    <a href="#" class="nav-link text-dark">
-                        Existencias
-                    </a>
-
-                    <a href="#" class="nav-link text-dark">
-                        Movimientos
-                    </a>
-
-                    <hr>
-
-                    <h6 class="text-secondary">ADMINISTRACIÓN</h6>
-
-                    <a href="#" class="nav-link text-dark">
-                        Usuarios
-                    </a>
-
-                    <a href="#" class="nav-link text-dark">
-                        Configuración
-                    </a>
-
-                </div>
-
-            </aside>
-
-            <main class="col-md-10 p-4">
-
-                @yield('content')
-
-            </main>
-
-        </div>
+        <form action="{{ route('logout') }}" method="POST">
+            @csrf
+            <button class="btn btn-outline-light btn-sm">
+                Cerrar sesión
+            </button>
+        </form>
     </div>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+
+        <aside class="col-md-2 sidebar p-3">
+
+            <h6 class="section-title">MENÚ PRINCIPAL</h6>
+
+            <a href="{{ route('dashboard') }}"
+               class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                Dashboard
+            </a>
+
+            <a href="{{ route('products.index') }}"
+               class="{{ request()->routeIs('products.*') ? 'active' : '' }}">
+                Productos
+            </a>
+
+            <a href="#">Categorías</a>
+            <a href="#">Proveedores</a>
+
+            <h6 class="section-title">INVENTARIO</h6>
+
+            <a href="#">Existencias</a>
+            <a href="#">Movimientos</a>
+
+            <h6 class="section-title">ADMINISTRACIÓN</h6>
+
+            <a href="#">Usuarios</a>
+            <a href="#">Roles</a>
+            <a href="#">Configuración</a>
+
+        </aside>
+
+        <main class="col-md-10 p-4">
+            @yield('content')
+        </main>
+
+    </div>
+</div>
 
 </body>
 </html>
