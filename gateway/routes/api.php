@@ -10,6 +10,8 @@ Route::post('/auth/login', [ProxyController::class, 'login']);
 // Protected routes
 Route::middleware('jwt')->group(function () {
 
+
+
     // Roles
     Route::get('/roles', [ProxyController::class, 'getRoles']);
     Route::post('/roles', [ProxyController::class, 'createRole']);
@@ -32,6 +34,15 @@ Route::middleware('jwt')->group(function () {
     Route::put('/products/{id}', [ProxyController::class, 'updateProduct']);
     Route::patch('/products/{id}', [ProxyController::class, 'updateProduct']);
     Route::delete('/products/{id}', [ProxyController::class, 'deleteProduct']);
+
+        // PURCHASE
+    Route::any('/suppliers/{any?}', [ProxyController::class, 'purchase'])->where('any', '.*');
+    Route::any('/purchase-orders/{any?}', [ProxyController::class, 'purchase'])->where('any', '.*');
+
+        // INVENTORY
+    Route::any('/inventory/{any?}', [ProxyController::class, 'inventory'])->where('any', '.*');
+    Route::any('/movements/{any?}', [ProxyController::class, 'inventory'])->where('any', '.*');
+    Route::get('/products/{id}/movements', [ProxyController::class, 'inventory']);
 
     // CATEGORIES
     Route::get('/categories', [ProxyController::class, 'getCategories']);

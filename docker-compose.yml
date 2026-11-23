@@ -128,15 +128,13 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # MICROSERVICE - IDENTITY
+  # MICROSERVICE - IDENTITY (no published port: only reachable through the gateway)
   # ==========================================
   identity:
     build:
       context: ./services/ms-identity
       dockerfile: Dockerfile
     container_name: papiers-identity
-    ports:
-      - "8001:8000"
     volumes:
       - ./services/ms-identity:/var/www
     environment:
@@ -152,15 +150,13 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # MICROSERVICE - CATALOG
+  # MICROSERVICE - CATALOG (no published port)
   # ==========================================
   catalog:
     build:
       context: ./services/ms-catalog
       dockerfile: Dockerfile
     container_name: papiers-catalog
-    ports:
-      - "8003:8000"
     volumes:
       - ./services/ms-catalog:/var/www
     environment:
@@ -175,15 +171,13 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # MICROSERVICE - INVENTORY
+  # MICROSERVICE - INVENTORY (no published port)
   # ==========================================
   inventory:
     build:
       context: ./services/ms-inventory
       dockerfile: Dockerfile
     container_name: papiers-inventory
-    ports:
-      - "8004:8000"
     volumes:
       - ./services/ms-inventory:/var/www
     environment:
@@ -193,21 +187,20 @@ services:
       DB_DATABASE: papiers_inventory
       DB_USERNAME: inventory
       DB_PASSWORD: inventory_pw
+      CATALOG_URL: http://catalog:8000
     depends_on:
       mysql-inventory:
         condition: service_healthy
     restart: unless-stopped
 
   # ==========================================
-  # MICROSERVICE - PURCHASE
+  # MICROSERVICE - PURCHASE (no published port)
   # ==========================================
   purchase:
     build:
       context: ./services/ms-purchase
       dockerfile: Dockerfile
     container_name: papiers-purchase
-    ports:
-      - "8005:8000"
     volumes:
       - ./services/ms-purchase:/var/www
     environment:
@@ -244,15 +237,13 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # MICROSERVICE - NOTIFICATIONS
+  # MICROSERVICE - NOTIFICATIONS (no published port)
   # ==========================================
   notifications:
     build:
       context: ./services/ms-notifications
       dockerfile: Dockerfile
     container_name: papiers-notifications
-    ports:
-      - "8006:8000"
     volumes:
       - ./services/ms-notifications:/var/www
     environment:
@@ -281,7 +272,7 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # API GATEWAY
+  # API GATEWAY (the only published application port)
   # ==========================================
   gateway:
     build:

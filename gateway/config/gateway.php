@@ -9,5 +9,7 @@ return [
         'inventory' => env('INVENTORY_URL', 'http://inventory:8000'),
         'purchase' => env('PURCHASE_URL', 'http://purchase:8000'),
         'notifications' => env('NOTIFICATIONS_URL', 'http://notifications:8000'),
+        'purchase' => env('PURCHASE_URL'),
+        'inventory' => env('INVENTORY_URL'),
     ],
 ];

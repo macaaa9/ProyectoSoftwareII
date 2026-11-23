@@ -93,7 +93,7 @@ class ProxyController extends Controller
         return $this->forward($request, 'catalog');
     }
 
-    // CATEGORIES
+    
     public function getCategories(Request $request): Response
     {
         return $this->forward($request, 'catalog');
@@ -107,6 +107,17 @@ class ProxyController extends Controller
     public function updateCategory(Request $request): Response
     {
         return $this->forward($request, 'catalog');
+    }
+    
+    public function purchase(Request $request): Response
+    {
+        return $this->forward($request, 'purchase');
+    }
+
+    
+    public function inventory(Request $request): Response
+    {
+        return $this->forward($request, 'inventory');
     }
 
     // FORWARD REQUEST
