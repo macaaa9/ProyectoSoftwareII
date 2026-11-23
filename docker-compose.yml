@@ -14,6 +14,11 @@ services:
       RABBITMQ_DEFAULT_PASS: papiers123
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
   # ==========================================
@@ -128,7 +133,43 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # MICROSERVICE - IDENTITY (no published port: only reachable through the gateway)
+  # MYSQL - AUDITORIA
+  # ==========================================
+  mysql-auditoria:
+    image: mysql:8.4
+    container_name: papiers-mysql-auditoria
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+    volumes:
+      - mysql_auditoria_data:/var/lib/mysql
+      - ./services/ms-auditoria/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # ==========================================
+  # MYSQL - REPORTES
+  # ==========================================
+  mysql-reportes:
+    image: mysql:8.4
+    container_name: papiers-mysql-reportes
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+    volumes:
+      - mysql_reportes_data:/var/lib/mysql
+      - ./services/ms-reportes/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # ==========================================
+  # MICROSERVICE - IDENTITY
   # ==========================================
   identity:
     build:
@@ -150,7 +191,7 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # MICROSERVICE - CATALOG (no published port)
+  # MICROSERVICE - CATALOG
   # ==========================================
   catalog:
     build:
@@ -171,7 +212,7 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # MICROSERVICE - INVENTORY (no published port)
+  # MICROSERVICE - INVENTORY
   # ==========================================
   inventory:
     build:
@@ -194,7 +235,7 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # MICROSERVICE - PURCHASE (no published port)
+  # MICROSERVICE - PURCHASE
   # ==========================================
   purchase:
     build:
@@ -220,7 +261,6 @@ services:
       RABBITMQ_PORT: "5672"
       RABBITMQ_USER: papiers
       RABBITMQ_PASSWORD: papiers123
-
     depends_on:
       mysql-purchase:
         condition: service_healthy
@@ -231,13 +271,13 @@ services:
       notifications:
         condition: service_started
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
       consul:
         condition: service_started
     restart: unless-stopped
 
   # ==========================================
-  # MICROSERVICE - NOTIFICATIONS (no published port)
+  # MICROSERVICE - NOTIFICATIONS
   # ==========================================
   notifications:
     build:
@@ -261,18 +301,164 @@ services:
 
       CONSUL_HOST: consul
       CONSUL_PORT: "8500"
-
     depends_on:
       mysql-notifications:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
       consul:
         condition: service_started
     restart: unless-stopped
 
   # ==========================================
-  # API GATEWAY (the only published application port)
+  # MICROSERVICE - AUDITORIA - FLASK
+  # ==========================================
+  ms-auditoria:
+    build:
+      context: ./services/ms-auditoria
+      dockerfile: Dockerfile
+    container_name: papiers-ms-auditoria
+    environment:
+      SERVICE_NAME: ms-auditoria
+      SERVICE_PORT: "8005"
+      SERVICE_ADDRESS: ms-auditoria
+
+      DB_HOST: mysql-auditoria
+      DB_PORT: "3306"
+      DB_NAME: db_auditoria
+      DB_USER: auditoria
+      DB_PASSWORD: auditoria_pass
+
+      RABBITMQ_URL: amqp://papiers:papiers123@rabbitmq:5672/%2F
+      RABBITMQ_EXCHANGE: papiers.eventos
+      RABBITMQ_QUEUE: ms-auditoria.eventos
+      RABBITMQ_ROUTING_KEYS: inventario.movimiento.registrado,compras.mercancia.recibida,compras.devolucion.registrada
+
+      CONSUL_URL: http://consul:8500
+      CONSUL_REGISTER: "false"
+
+      APP_TZ: America/Bogota
+      AUTO_CREATE_TABLES: "false"
+    depends_on:
+      mysql-auditoria:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_started
+    restart: unless-stopped
+
+  # ==========================================
+  # WORKER - AUDITORIA
+  # ==========================================
+  ms-auditoria-worker:
+    build:
+      context: ./services/ms-auditoria
+      dockerfile: Dockerfile
+    container_name: papiers-ms-auditoria-worker
+    command: ["python", "-m", "app.consumer"]
+    environment:
+      SERVICE_NAME: ms-auditoria-worker
+      SERVICE_PORT: "8005"
+
+      DB_HOST: mysql-auditoria
+      DB_PORT: "3306"
+      DB_NAME: db_auditoria
+      DB_USER: auditoria
+      DB_PASSWORD: auditoria_pass
+
+      RABBITMQ_URL: amqp://papiers:papiers123@rabbitmq:5672/%2F
+      RABBITMQ_EXCHANGE: papiers.eventos
+      RABBITMQ_QUEUE: ms-auditoria.eventos
+      RABBITMQ_ROUTING_KEYS: inventario.movimiento.registrado,compras.mercancia.recibida,compras.devolucion.registrada
+
+      CONSUL_URL: http://consul:8500
+      CONSUL_REGISTER: "false"
+      APP_TZ: America/Bogota
+      AUTO_CREATE_TABLES: "false"
+    depends_on:
+      mysql-auditoria:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ==========================================
+  # MICROSERVICE - REPORTES - FLASK
+  # ==========================================
+  ms-reportes:
+    build:
+      context: ./services/ms-reportes
+      dockerfile: Dockerfile
+    container_name: papiers-ms-reportes
+    environment:
+      SERVICE_NAME: ms-reportes
+      SERVICE_PORT: "8007"
+      SERVICE_ADDRESS: ms-reportes
+
+      DB_HOST: mysql-reportes
+      DB_PORT: "3306"
+      DB_NAME: db_reportes
+      DB_USER: reportes
+      DB_PASSWORD: reportes_pass
+
+      RABBITMQ_URL: amqp://papiers:papiers123@rabbitmq:5672/%2F
+      RABBITMQ_EXCHANGE: papiers.eventos
+      RABBITMQ_QUEUE: ms-reportes.eventos
+      RABBITMQ_ROUTING_KEYS: catalogo.producto.actualizado,inventario.movimiento.registrado,inventario.estado_stock.cambiado
+
+      CONSUL_URL: http://consul:8500
+      CONSUL_REGISTER: "false"
+
+      APP_TZ: America/Bogota
+      AUTO_CREATE_TABLES: "false"
+    depends_on:
+      mysql-reportes:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_started
+    restart: unless-stopped
+
+  # ==========================================
+  # WORKER - REPORTES
+  # ==========================================
+  ms-reportes-worker:
+    build:
+      context: ./services/ms-reportes
+      dockerfile: Dockerfile
+    container_name: papiers-ms-reportes-worker
+    command: ["python", "-m", "app.consumer"]
+    environment:
+      SERVICE_NAME: ms-reportes-worker
+      SERVICE_PORT: "8007"
+
+      DB_HOST: mysql-reportes
+      DB_PORT: "3306"
+      DB_NAME: db_reportes
+      DB_USER: reportes
+      DB_PASSWORD: reportes_pass
+
+      RABBITMQ_URL: amqp://papiers:papiers123@rabbitmq:5672/%2F
+      RABBITMQ_EXCHANGE: papiers.eventos
+      RABBITMQ_QUEUE: ms-reportes.eventos
+      RABBITMQ_ROUTING_KEYS: catalogo.producto.actualizado,inventario.movimiento.registrado,inventario.estado_stock.cambiado
+
+      CONSUL_URL: http://consul:8500
+      CONSUL_REGISTER: "false"
+
+      APP_TZ: America/Bogota
+      AUTO_CREATE_TABLES: "false"
+    depends_on:
+      mysql-reportes:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ==========================================
+  # API GATEWAY - UNICO PUERTO DE APLICACION
   # ==========================================
   gateway:
     build:
@@ -289,12 +475,17 @@ services:
       INVENTORY_URL: http://inventory:8000
       PURCHASE_URL: http://purchase:8000
       NOTIFICATIONS_URL: http://notifications:8000
+
+      AUDIT_URL: http://ms-auditoria:8005
+      REPORTS_URL: http://ms-reportes:8007
     depends_on:
       - identity
       - catalog
       - inventory
       - purchase
       - notifications
+      - ms-auditoria
+      - ms-reportes
     restart: unless-stopped
 
 # ==========================================
@@ -307,3 +498,5 @@ volumes:
   mysql_inventory_data:
   mysql_purchase_data:
   mysql_notifications_data:
+  mysql_auditoria_data:
+  mysql_reportes_data:
