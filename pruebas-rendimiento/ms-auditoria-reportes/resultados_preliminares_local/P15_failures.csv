@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,GET reportes/quiebres,CatchResponseError('HTTP 0'),1,2026-11-23T03:57:47Z,2026-11-23T03:57:47Z
